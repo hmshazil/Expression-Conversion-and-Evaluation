@@ -1,9 +1,18 @@
+// ============================================================
+  // NAME : H.M.Shazil
+  //ROLL NO : BCSF24A009
+// ============================================================
+
 #include <iostream>
 #include <string>
 #include <stack>    
-#include <vector>   
+#include <vector>  
 #include <map>      
 using namespace std;
+
+// ============================================================
+// HELPER FUNCTIONS 
+// ============================================================
 
 bool isLetter(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
@@ -25,7 +34,7 @@ bool isOperator(char c) {
     return c == '+' || c == '-' || c == '*' || c == '/' || c == '%';
 }
 
-
+// Closing bracket ka matching opening bracket
 char matchingOpen(char close) {
     if (close == ')') return '(';
     if (close == ']') return '[';
@@ -33,6 +42,7 @@ char matchingOpen(char close) {
     return '?';
 }
 
+// Operator ki priority:
 
 int precedence(const string& op) {
     if (op == "%")             return 3;  
@@ -41,23 +51,25 @@ int precedence(const string& op) {
     return 0;
 }
 
+// String ko double mein convert karo
 double toDouble(const string& s) {
     double result = 0;
-    double dec = 0;       
+    double dec = 0;       // 0 matlab abhi decimal nahi aaya
     for (char c : s) {
         if (c == '.') {
-            dec = 0.1;  
+            dec = 0.1;    // Decimal point aa gaya
         } else {
             int d = c - '0';
-            if (dec == 0) result = result * 10 + d;   
-            else          { result += d * dec; 
-                dec *= 0.1; } 
+            if (dec == 0) result = result * 10 + d;   // Integer part
+            else          { result += d * dec; dec *= 0.1; }  // Decimal part
         }
     }
     return result;
 }
 
-
+// ============================================================
+// STEP 1: TOKENIZATION
+// ============================================================
 
 vector<string> tokenize(const string& expr) {
     vector<string> tokens;
@@ -66,8 +78,10 @@ vector<string> tokenize(const string& expr) {
     while (i < len) {
         char c = expr[i];
 
+        // Whitespace skip
         if (c == ' ' || c == '\t') { i++; continue; }
 
+        // Variable naam
         if (isLetter(c) || c == '_') {
             string word;
             while (i < len && (isLetter(expr[i]) || isDigit(expr[i]) || expr[i] == '_'))
@@ -76,6 +90,7 @@ vector<string> tokenize(const string& expr) {
             continue;
         }
 
+        // Number: digits aur optional decimal point
         if (isDigit(c)) {
             string num;
             bool hasDot = false;
@@ -87,12 +102,14 @@ vector<string> tokenize(const string& expr) {
             continue;
         }
 
+        // Operator ya bracket   single character
         if (isOperator(c) || isOpenBracket(c) || isCloseBracket(c)) {
             tokens.push_back(string(1, c));
             i++;
             continue;
         }
 
+        // Koi aur character syntax error
         cerr << "Error: Invalid character '" << c << "' in expression" << endl;
         exit(1);
     }
@@ -100,6 +117,9 @@ vector<string> tokenize(const string& expr) {
     return tokens;
 }
 
+// ============================================================
+// STEP 2: SYNTAX VALIDATION 
+// ============================================================
 
 void validateSyntax(const vector<string>& tokens) {
     int n = tokens.size();
@@ -109,6 +129,7 @@ void validateSyntax(const vector<string>& tokens) {
         exit(1);
     }
 
+    // Shuru ya end operator se nahi ho sakta
     if (isOperator(tokens[0][0])) {
         cerr << "Error: Expression starts with operator '" << tokens[0] << "'" << endl;
         exit(1);
@@ -122,15 +143,18 @@ void validateSyntax(const vector<string>& tokens) {
         char curr = tokens[i][0];
         char next = tokens[i+1][0];
 
+        //  token operand hai (variable ya number)
         bool currIsOperand = isLetter(curr) || isDigit(curr) || curr == '_';
         bool nextIsOperand = isLetter(next) || isDigit(next) || next == '_';
 
+        // Do operators saath saath nahi aa sakte: a ** b 
         if (isOperator(curr) && isOperator(next)) {
             cerr << "Error: Two consecutive operators '"
                  << tokens[i] << "' and '" << tokens[i+1] << "'" << endl;
             exit(1);
         }
 
+        // Do operands ke beech operator HONA chahiye
         bool currIsOperandOrClose = currIsOperand || isCloseBracket(curr);
         bool nextIsOperandOrOpen  = nextIsOperand || isOpenBracket(next);
         if (currIsOperandOrClose && nextIsOperandOrOpen) {
@@ -139,13 +163,14 @@ void validateSyntax(const vector<string>& tokens) {
             exit(1);
         }
 
-
+        // Operator ke baad seedha closing bracket: a + )
         if (isOperator(curr) && isCloseBracket(next)) {
             cerr << "Error: Operator '" << tokens[i]
                  << "' before closing bracket '" << tokens[i+1] << "'" << endl;
             exit(1);
         }
 
+        // Opening bracket ke baad seedha operator: ( * a
         if (isOpenBracket(curr) && isOperator(next)) {
             cerr << "Error: Operator '" << tokens[i+1]
                  << "' right after opening bracket '" << tokens[i] << "'" << endl;
@@ -154,7 +179,9 @@ void validateSyntax(const vector<string>& tokens) {
     }
 }
 
-
+// ============================================================
+// STEP 3: INFIX → POSTFIX 
+// ============================================================
 
 vector<string> infixToPostfix(const vector<string>& tokens) {
     vector<string> postfix;   
@@ -163,16 +190,17 @@ vector<string> infixToPostfix(const vector<string>& tokens) {
     for (const string& token : tokens) {
         char first = token[0];
 
-    
+        // Operand (number ya variable)  seedha output mein
         if (isDigit(first) || isLetter(first) || first == '_') {
             postfix.push_back(token);
         }
 
-       
+        // Opening bracket  push stack
         else if (isOpenBracket(first)) {
             opStack.push(token);
         }
 
+        // Closing bracket  tk pop
         else if (isCloseBracket(first)) {
             char expectedOpen = matchingOpen(first);
             bool found = false;
@@ -180,7 +208,7 @@ vector<string> infixToPostfix(const vector<string>& tokens) {
             while (!opStack.empty()) {
                 string top = opStack.top(); opStack.pop();
                 if (top[0] == expectedOpen) { found = true; break; }
-                postfix.push_back(top);     
+                postfix.push_back(top);     // Operator output mein
             }
 
             if (!found) {
@@ -189,7 +217,7 @@ vector<string> infixToPostfix(const vector<string>& tokens) {
             }
         }
 
-
+        // Operator  high/equal priority
         else if (isOperator(first)) {
             while (!opStack.empty()
                    && !isOpenBracket(opStack.top()[0])
@@ -201,9 +229,9 @@ vector<string> infixToPostfix(const vector<string>& tokens) {
         }
     }
 
+    // output
     while (!opStack.empty()) {
-        string top = opStack.top(); 
-        opStack.pop();
+        string top = opStack.top(); opStack.pop();
         if (isOpenBracket(top[0])) {
             cerr << "Error: Unmatched opening bracket '" << top << "'" << endl;
             exit(1);
@@ -214,38 +242,40 @@ vector<string> infixToPostfix(const vector<string>& tokens) {
     return postfix;
 }
 
-
+// ============================================================
+// STEP 4: VARIABLES KI VALUES LENA
+// ============================================================
 
 map<string, double> collectVariables(const vector<string>& postfix) {
-    map<string, double> varMap;      
-    vector<string> uniqueVars;      
+    map<string, double> varMap;    
+    vector<string> uniqueVars;       // postfix mein jis order mein aaye
 
-
+    // Postfix se unique variable names nikalo
     for (const string& token : postfix) {
         char first = token[0];
         if ((isLetter(first) || first == '_') &&
-            varMap.find(token) == varMap.end())
-             { 
-            varMap[token] = 0;          
+            varMap.find(token) == varMap.end()) {  
+            varMap[token] = 0;       
             uniqueVars.push_back(token); 
         }
     }
 
-
     for (const string& name : uniqueVars) {
-        cerr << "Enter value for "<< name << ":";
+        cerr << "Enter value for " << name << ": ";
         double val;
         if (!(cin >> val)) {
             cerr << "Error: Invalid input for '" << name << "'" << endl;
             exit(1);
         }
-        varMap[name] = val; 
+        varMap[name] = val;  // Map update
     }
 
     return varMap;
 }
 
-
+// ============================================================
+// STEP 5: POSTFIX EVALUATION
+// ============================================================
 
 double evaluatePostfix(const vector<string>& postfix, const map<string, double>& varMap) {
     stack<double> numStack;
@@ -253,11 +283,11 @@ double evaluatePostfix(const vector<string>& postfix, const map<string, double>&
     for (const string& token : postfix) {
         char first = token[0];
 
+
         if (isDigit(first) || first == '.') {
             numStack.push(toDouble(token));
         }
 
-  
         else if (isLetter(first) || first == '_') {
             if (varMap.find(token) == varMap.end()) {
                 cerr << "Error: Variable '" << token << "' not found" << endl;
@@ -266,17 +296,14 @@ double evaluatePostfix(const vector<string>& postfix, const map<string, double>&
             numStack.push(varMap.at(token));
         }
 
-      
         else if (isOperator(first)) {
             if (numStack.size() < 2) {
                 cerr << "Error: Not enough operands for '" << token << "'" << endl;
                 exit(2);
             }
-        
-            double right = numStack.top(); 
-            numStack.pop();
-            double left  = numStack.top();
-             numStack.pop();
+            //  right pehle nikalta hai 
+            double right = numStack.top(); numStack.pop();
+            double left  = numStack.top(); numStack.pop();
             double result = 0;
 
             if      (token == "+") result = left + right;
@@ -290,7 +317,7 @@ double evaluatePostfix(const vector<string>& postfix, const map<string, double>&
                 result = left / right;
             }
             else if (token == "%") {
-             
+                
                 if (right == 0) {
                     cerr << "Error: Modulus by zero" << endl;
                     exit(2);
@@ -299,13 +326,14 @@ double evaluatePostfix(const vector<string>& postfix, const map<string, double>&
                     cerr << "Error: Modulus (%) only works on integers, got decimals" << endl;
                     exit(2);
                 }
-                result = (long long)left % (long long)right;  
+                result = (long long)left % (long long)right;  //  only Integer modulus
             }
 
             numStack.push(result);
         }
     }
 
+    // only 1 value hogi
     if (numStack.size() != 1) {
         cerr << "Error: Expression is invalid — extra operands left over" << endl;
         exit(2);
@@ -314,7 +342,9 @@ double evaluatePostfix(const vector<string>& postfix, const map<string, double>&
     return numStack.top();
 }
 
-
+// ============================================================
+// POSTFIX VECTOR → PRINTABLE STRING
+// ============================================================
 
 string postfixToString(const vector<string>& postfix) {
     string s;
@@ -325,26 +355,28 @@ string postfixToString(const vector<string>& postfix) {
     return s;
 }
 
-
+// ============================================================
+// MAIN
+// ============================================================
 
 int main() {
     string expression;
-    getline(cin, expression);          
+    getline(cin, expression);           
 
     vector<string> tokens  = tokenize(expression);        // Step 1
     validateSyntax(tokens);                                // Step 2 
     vector<string> postfix = infixToPostfix(tokens);      // Step 3
 
-    cout << postfixToString(postfix) << endl;             
+    cout << postfixToString(postfix) << endl;              // Postfix print 
 
     map<string, double> varMap = collectVariables(postfix); // Step 4 
     double answer = evaluatePostfix(postfix, varMap);       // Step 5
 
-   
+    // Agar answer integer hai toh bina .0 print karo
     if (answer == (long long)answer)
         cout << (long long)answer << endl;
     else
-        cout << "Final ANS : "<< answer << endl;
+        cout << answer << endl;
 
     return 0;  
 }
